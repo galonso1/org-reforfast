@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planificación Obras Reforfast</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#0f766e;--brand2:#0ea5a4;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#0b5f59;--chip:#f8fafc}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:22px 24px;box-shadow:0 14px 40px rgba(15,118,110,.18)}
+    .header-inner{max-width:1400px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+    .brand-block{display:flex;align-items:center;gap:16px;min-width:0}
+    .logo-box{width:72px;height:72px;border-radius:18px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;overflow:hidden;backdrop-filter:blur(6px);flex:0 0 auto}
+    .logo-box img{width:100%;height:100%;object-fit:contain;background:#fff}
+    .logo-fallback{font-size:24px;font-weight:900;letter-spacing:.04em}
+    header h1{margin:0 0 6px;font-size:30px;line-height:1.1} header p{margin:0;opacity:.96;max-width:900px}
+    .header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .header-actions input[type=file]{display:none}
+    .header-btn{background:#fff;color:var(--brand-dark);border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(15,23,42,.12)}
+    .header-btn.secondary{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.28)}
+    .wrap{padding:18px;max-width:1400px;margin:auto}
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 18px}
+    .tab{border:1px solid #cbd5e1;background:var(--chip);padding:11px 16px;border-radius:999px;cursor:pointer;font-weight:800;color:#0f172a;box-shadow:0 1px 0 rgba(255,255,255,.9) inset;transition:.18s ease}
+    .tab:hover{transform:translateY(-1px);border-color:#94a3b8;background:#fff}
+    .tab.active{background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:0 10px 20px rgba(15,118,110,.18)}
+    .panel{display:none}.panel.active{display:block}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(15,23,42,.05)}
+    .card h2,.card h3{margin:0 0 10px}
+    .span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-6{grid-column:span 6}.span-4{grid-column:span 4}
+    .span-3{grid-column:span 3}
+    @media(max-width:960px){.span-8,.span-6,.span-4,.span-3{grid-column:span 12}}
+    label{display:block;font-size:13px;color:var(--muted);margin:8px 0 6px;font-weight:700}
+    input,select,textarea,button{font:inherit}
+    input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+    textarea{min-height:84px;resize:vertical}
+    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;align-items:end}
+    .row > div{grid-column:span 12}
+    @media(min-width:961px){.row .c2{grid-column:span 2}.row .c3{grid-column:span 3}.row .c4{grid-column:span 4}.row .c5{grid-column:span 5}.row .c6{grid-column:span 6}}
+    button{background:var(--brand);color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;min-height:42px;line-height:1.15;box-shadow:0 6px 18px rgba(15,118,110,.12)}
+    button.secondary{background:#fff;color:#0f172a;border:1px solid #cbd5e1}
+    button.warn{background:#92400e} button.bad{background:#991b1b}
+    table{width:100%;border-collapse:separate;border-spacing:0;margin-top:8px;font-size:14px}
+    th,td{padding:10px 12px;border-bottom:1px solid #ecf0f3;vertical-align:middle;text-align:left}
+    th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);background:#fbfcfd;position:sticky;top:0}
+    tr:hover td{background:#fcfefe}
+    .pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc}
+    .pill.ok{background:#ecfdf5;color:var(--good);border-color:#bbf7d0}
+    .pill.warn{background:#fffbeb;color:var(--warn);border-color:#fde68a}
+    .pill.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+    .muted{color:var(--muted)}
+    .kpi{font-size:30px;font-weight:800;margin-top:8px}
+    .small{font-size:12px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .split{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
+    .modal-backdrop.show{display:flex}
+    .modal{width:min(560px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 80px rgba(15,23,42,.25);overflow:hidden}
+    .modal-head{padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .modal-head h3{margin:0;font-size:20px}
+    .modal-body{padding:18px}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px 18px;border-top:1px solid #e5e7eb;background:#fafbfc}
+    .icon-btn{background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:10px;padding:8px 12px;min-height:auto;box-shadow:none}
+
+  
+    .app-shell.hidden{display:none}
+    .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,#eaf7f5 0%, #f6f8fb 55%, #eef7ff 100%)}
+    .login-card{width:100%;max-width:420px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:0 24px 60px rgba(15,23,42,.10)}
+    .login-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+    .login-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:900;overflow:hidden;flex:0 0 auto}
+    .login-logo img{width:100%;height:100%;object-fit:contain;background:#fff}
+    .login-title{margin:0;font-size:24px;line-height:1.1}
+    .login-subtitle{margin:4px 0 0;color:var(--muted);font-size:14px}
+    .login-error{display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;color:var(--bad);font-size:14px;font-weight:700}
+    .login-error.show{display:block}
+    .login-help{margin-top:12px;color:var(--muted);font-size:12px}
+
+  </style>
+</head>
+<body>
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-top">
+      <div class="login-logo" id="loginLogo">RF</div>
+      <div>
+        <h1 class="login-title">Acceso privado</h1>
+        <p class="login-subtitle">Introduce la contraseña para entrar en PLANIFICACIÓN OBRAS REFORFAST.</p>
+      </div>
+    </div>
+    <label>Contraseña</label>
+    <input id="loginPassword" type="password" placeholder="Escribe la contraseña" onkeydown="handleLoginKey(event)">
+    <div class="actions" style="margin-top:16px"><button onclick="loginApp()">Entrar</button></div>
+    <div class="login-error" id="loginError">La contraseña no es correcta.</div>
+  </div>
+</div>
+<div class="app-shell hidden" id="appShell">
+<header>
+  <div class="header-inner">
+    <div class="brand-block">
+      <div class="logo-box" id="logoBox"></div>
+      <div>
+        <h1 style="letter-spacing:1px;">PLANIFICACIÓN OBRAS REFORFAST</h1>
+        <p>Gestión de obras y personal.</p>
+      </div>
+    </div>
+    <div class="actions"><button class="secondary" onclick="logoutApp()">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+</header>
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+  <div id="app"></div>
+</div>
+</div>
+<script>
+const LS_KEY='planificador_reformas_v1';
+const APP_PASSWORD='reforfast2026';
+const SESSION_KEY='planificador_reformas_session_v1';
+const pad=n=>String(n).padStart(2,'0');
+const parseISO=(iso)=>{const [y,m,d]=iso.split('-').map(Number);return new Date(Date.UTC(y,m-1,d));};
+const toISO=(date)=>`${date.getUTCFullYear()}-${pad(date.getUTCMonth()+1)}-${pad(date.getUTCDate())}`;
+const todayISO=()=>toISO(new Date());
+const addDays=(iso, days)=>{const d=parseISO(iso); d.setUTCDate(d.getUTCDate()+days); return toISO(d);};
+const diffDays=(a,b)=>Math.round((parseISO(b)-parseISO(a))/86400000);
+const uid=(p)=>p+'_'+Math.random().toString(36).slice(2,10);
+const clone=(x)=>JSON.parse(JSON.stringify(x));
+const fmtDate=(iso)=>iso?parseISO(iso).toLocaleDateString('es-ES',{timeZone:'UTC'}):'';
+const defaultData={
+  specialities:['Demolición','Albañilería','Electricidad','Fontanería','Pladur','Pintura','Carpintería','Alicatado'],
+  employees:[
+    {id:uid('emp'),name:'Carlos',specialities:['Demolición','Albañilería'],dailyCapacity:1,active:true},
+    {id:uid('emp'),name:'Laura',specialities:['Electricidad'],dailyCapacity:1,active:true},
+    {id:uid('emp'),name:'Miguel',specialities:['Fontanería'],dailyCapacity:1,active:true},
+    {id:uid('emp'),name:'Ana',specialities:['Pintura','Pladur'],dailyCapacity:1,active:true},
+  ],
+  workTypes:[
+    {id:uid('wt'),name:'Baño',notes:'Reforma integral de baño'},
+    {id:uid('wt'),name:'Cocina',notes:'Reforma integral de cocina'},
+  ],
+  stageTemplates:[
+    {id:uid('st'),workTypeName:'Baño',order:1,stage:'Demolición',speciality:'Demolición',durationDays:2,crewSize:1},
+    {id:uid('st'),workTypeName:'Baño',order:2,stage:'Fontanería',speciality:'Fontanería',durationDays:2,crewSize:1},
+    {id:uid('st'),workTypeName:'Baño',order:3,stage:'Electricidad',speciality:'Electricidad',durationDays:2,crewSize:1},
+    {id:uid('st'),workTypeName:'Baño',order:4,stage:'Alicatado',speciality:'Alicatado',durationDays:3,crewSize:1},
+    {id:uid('st'),workTypeName:'Baño',order:5,stage:'Pintura',speciality:'Pintura',durationDays:1,crewSize:1},
+    {id:uid('st'),workTypeName:'Cocina',order:1,stage:'Demolición',speciality:'Demolición',durationDays:2,crewSize:1},
+    {id:uid('st'),workTypeName:'Cocina',order:2,stage:'Fontanería',speciality:'Fontanería',durationDays:2,crewSize:1},
+    {id:uid('st'),workTypeName:'Cocina',order:3,stage:'Electricidad',speciality:'Electricidad',durationDays:2,crewSize:1},
+    {id:uid('st'),workTypeName:'Cocina',order:4,stage:'Pladur',speciality:'Pladur',durationDays:2,crewSize:1},
+    {id:uid('st'),workTypeName:'Cocina',order:5,stage:'Pintura',speciality:'Pintura',durationDays:1,crewSize:1},
+  ],
+  projects:[
+    {id:uid('pr'),name:'Obra Calle Sol',client:'Familia Ruiz',workTypeName:'Baño',startDate:todayISO(),priority:2,status:'Activa',notes:''},
+    {id:uid('pr'),name:'Obra Plaza Norte',client:'Inés',workTypeName:'Cocina',startDate:addDays(todayISO(),1),priority:1,status:'Activa',notes:''},
+  ],
+  assignments:[],
+  absences:[]
+};
+let db=load();
+let companyLogo='';
+function load(){ try{ return Object.assign(clone(defaultData), JSON.parse(localStorage.getItem(LS_KEY)||'{}')); }catch(e){ return clone(defaultData);} }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
+function resetDemo(){ if(confirm('Se borrarán los datos actuales y se restaurará la demo.')){ db=clone(defaultData); save(); render(); }}
+function renderLogo(){
+  const box=document.getElementById('logoBox');
+  const loginLogo=document.getElementById('loginLogo');
+  const candidates=['logo.png','logo.jpg','logo.jpeg','logo.webp','logo.svg','Logo.png','Logo.jpg','LOGO.png'];
+  let i=0;
+  function setFallback(){
+    if(box) box.innerHTML = '<div class="logo-fallback">RF</div>';
+    if(loginLogo) loginLogo.innerHTML = 'RF';
+  }
+  function tryNext(){
+    if(i>=candidates.length){
+      setFallback();
+      return;
+    }
+    const src=candidates[i++];
+    const img=new Image();
+    img.onload=()=>{ 
+      if(box) box.innerHTML=`<img src="${src}" alt="Logo de la empresa">`;
+      if(loginLogo) loginLogo.innerHTML=`<img src="${src}" alt="Logo de la empresa">`;
+    };
+    img.onerror=tryNext;
+    img.src=src;
+  }
+  tryNext();
+}
+
+let modalOnSave=null;
+function openModal(title, bodyHtml, onSave, saveLabel='Guardar'){
+  document.getElementById('appModalTitle').textContent=title;
+  document.getElementById('appModalBody').innerHTML=bodyHtml;
+  document.getElementById('appModalActions').innerHTML=`<button class="secondary" onclick="closeModal()">Cancelar</button><button onclick="submitModal()">${saveLabel}</button>`;
+  modalOnSave=onSave;
+  document.getElementById('appModalBackdrop').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('appModalBackdrop').classList.remove('show');
+  document.getElementById('appModalBody').innerHTML='';
+  document.getElementById('appModalActions').innerHTML='';
+  modalOnSave=null;
+}
+function submitModal(){ if(modalOnSave) modalOnSave(); }
+function esc(v=''){ return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function isLoggedIn(){ return localStorage.getItem(SESSION_KEY)==='ok'; }
+function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appShell').classList.remove('hidden');
+}
+function showLogin(){
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('appShell').classList.add('hidden');
+}
+function loginApp(){
+  const input=document.getElementById('loginPassword');
+  const error=document.getElementById('loginError');
+  if((input.value||'')===APP_PASSWORD){
+    localStorage.setItem(SESSION_KEY,'ok');
+    error.classList.remove('show');
+    showApp();
+    render();
+  }else{
+    error.classList.add('show');
+    input.focus();
+    input.select();
+  }
+}
+function handleLoginKey(event){ if(event.key==='Enter') loginApp(); }
+function logoutApp(){
+  localStorage.removeItem(SESSION_KEY);
+  showLogin();
+  document.getElementById('loginPassword').value='';
+}
+
+function exportJSON(){ const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='planificador_reformas_datos.json'; a.click(); }
+function importJSON(file){ const reader=new FileReader(); reader.onload=()=>{ try{ db=JSON.parse(reader.result); save(); render(); alert('Datos importados correctamente.'); }catch(e){ alert('El archivo no es válido.'); } }; reader.readAsText(file); }
+function templatesForType(name){ return db.stageTemplates.filter(x=>x.workTypeName===name).sort((a,b)=>a.order-b.order); }
+function projectTasks(project){ return templatesForType(project.workTypeName).map(t=>({
+    projectId:project.id, projectName:project.name, workTypeName:project.workTypeName, priority:project.priority,
+    startBase:project.startDate, stageOrder:t.order, stage:t.stage, speciality:t.speciality,
+    durationDays:Number(t.durationDays)||1, crewSize:Number(t.crewSize)||1,
+    taskId:project.id+'__'+t.order
+  })); }
+function computePlan(){
+  const employees=db.employees.filter(e=>e.active);
+  const absByEmp={};
+  db.absences.forEach(a=>{ if(!absByEmp[a.employeeId]) absByEmp[a.employeeId]=[]; absByEmp[a.employeeId].push(a); });
+  const nextFree={}; employees.forEach(e=>nextFree[e.id]=todayISO());
+  const plan=[];
+  const projects=clone(db.projects).filter(p=>p.status!=='Terminada').sort((a,b)=> (a.priority-b.priority) || a.startDate.localeCompare(b.startDate));
+  for(const p of projects){
+    let prevEnd=p.startDate;
+    for(const task of projectTasks(p)){
+      const eligible=employees.filter(e=>e.specialities.includes(task.speciality));
+      if(!eligible.length){
+        plan.push({...task, employeeId:'', employeeName:'SIN EMPLEADO', startDate:'', endDate:'', status:'Sin recurso'});
+        prevEnd=prevEnd;
+        continue;
+      }
+      let best=null;
+      for(const e of eligible){
+        let candidate = nextFree[e.id] > prevEnd ? nextFree[e.id] : prevEnd;
+        const abs = absByEmp[e.id] || [];
+        let moved=true;
+        while(moved){
+          moved=false;
+          for(const a of abs){
+            if(candidate>=a.startDate && candidate<=a.endDate){ candidate=addDays(a.endDate,1); moved=true; }
+          }
+        }
+        const score = [candidate, p.priority, e.name];
+        if(!best || score.join('|') < best.score.join('|')) best={emp:e, startDate:candidate, score};
+      }
+      const endDate=addDays(best.startDate, Math.max(0, task.durationDays-1));
+      nextFree[best.emp.id]=addDays(endDate,1);
+      plan.push({...task, employeeId:best.emp.id, employeeName:best.emp.name, startDate:best.startDate, endDate, status:'Planificada'});
+      prevEnd=addDays(endDate,1);
+    }
+  }
+  return plan;
+}
+function kpis(plan){
+  const activeProjects=db.projects.filter(p=>p.status!=='Terminada').length;
+  const unassigned=plan.filter(x=>!x.employeeId).length;
+  const byEmp={}; plan.forEach(p=>{ if(p.employeeName && p.employeeId){ byEmp[p.employeeName]=(byEmp[p.employeeName]||0)+p.durationDays; } });
+  return {activeProjects,unassigned,plannedTasks:plan.length, busiest:Object.entries(byEmp).sort((a,b)=>b[1]-a[1])[0]};
+}
+function html(strings,...vals){ return strings.reduce((a,s,i)=>a+s+(vals[i]??''),''); }
+const tabs=[
+  ['resumen','Resumen'],['empleados','Empleados'],['tipos','Tipos de obra'],['etapas','Etapas por tipo'],['obras','Obras'],['ausencias','Ausencias'],['plan','Plan automático']
+];
+let active='resumen';
+function render(){ save(); renderLogo(); document.getElementById('tabs').innerHTML=tabs.map(([id,label])=>`<button class="tab ${id===active?'active':''}" onclick="active='${id}';render()">${label}</button>`).join('');
+  const plan=computePlan(); const m=kpis(plan);
+  document.getElementById('app').innerHTML=`
+    <section class="panel ${active==='resumen'?'active':''}">${panelResumen(plan,m)}</section>
+    <section class="panel ${active==='empleados'?'active':''}">${panelEmpleados()}</section>
+    <section class="panel ${active==='tipos'?'active':''}">${panelTipos()}</section>
+    <section class="panel ${active==='etapas'?'active':''}">${panelEtapas()}</section>
+    <section class="panel ${active==='obras'?'active':''}">${panelObras()}</section>
+    <section class="panel ${active==='ausencias'?'active':''}">${panelAusencias()}</section>
+    <section class="panel ${active==='plan'?'active':''}">${panelPlan(plan)}</section>`;
+}
+function panelResumen(plan,m){
+  const nextStages=plan.slice(0,8).map(p=>`<tr><td>${p.projectName}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.employeeName||'-'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td></tr>`).join('');
+  return `
+  <div class="grid">
+    <div class="card span-3"><div class="muted">Obras activas</div><div class="kpi">${m.activeProjects}</div></div>
+    <div class="card span-3"><div class="muted">Tareas planificadas</div><div class="kpi">${m.plannedTasks}</div></div>
+    <div class="card span-3"><div class="muted">Tareas sin recurso</div><div class="kpi">${m.unassigned}</div></div>
+    <div class="card span-3"><div class="muted">Empleado con más carga</div><div class="kpi" style="font-size:20px">${m.busiest?m.busiest[0]:'-'}</div><div class="small muted">${m.busiest?m.busiest[1]+' días asignados':'Sin datos'}</div></div>
+    <div class="card span-8"><div class="split"><h2>Próximas etapas</h2><div class="actions"><button class="secondary" onclick="exportJSON()">Exportar JSON</button><label class="secondary" style="padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;cursor:pointer">Importar JSON<input type="file" accept="application/json" style="display:none" onchange="importJSON(this.files[0])"></label><button class="warn" onclick="resetDemo()">Restaurar demo</button></div></div>
+      <table><thead><tr><th>Obra</th><th>Etapa</th><th>Especialidad</th><th>Empleado</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>${nextStages || '<tr><td colspan="6" class="muted">Sin datos</td></tr>'}</tbody></table>
+    </div>
+    <div class="card span-4"><h2>Cómo funciona</h2><p class="muted">Cada obra toma su secuencia de etapas según el tipo. El plan busca el primer empleado libre con la especialidad correcta y lo coloca en esa etapa. Al terminar, el empleado queda disponible para otra obra compatible.</p><p class="muted">Este plan es una base. Puedes cambiar prioridades, duraciones, plantillas y ausencias para recalcular.</p></div>
+  </div>`;
+}
+function panelEmpleados(){
+  const rows=db.employees.map(e=>`<tr><td>${e.name}</td><td>${e.specialities.map(s=>`<span class="pill">${s}</span>`).join(' ')}</td><td>${e.dailyCapacity||1}</td><td>${e.active?'<span class="pill ok">Activo</span>':'<span class="pill bad">Inactivo</span>'}</td><td><button class="secondary" onclick="editEmployee('${e.id}')">Editar</button> <button class="bad" onclick="deleteById('employees','${e.id}')">Borrar</button></td></tr>`).join('');
+  return `<div class="grid"><div class="card span-4"><h2>Nuevo empleado</h2>
+    <label>Nombre</label><input id="emp_name">
+    <label>Especialidades (separadas por coma)</label><input id="emp_specs" placeholder="Electricidad, Fontanería">
+    <label>Capacidad diaria</label><input id="emp_cap" type="number" value="1" min="1">
+    <div class="actions" style="margin-top:12px"><button onclick="openEmployeeModal()">Nuevo empleado</button></div></div>
+    <div class="card span-8"><h2>Equipo</h2><table><thead><tr><th>Nombre</th><th>Especialidades</th><th>Capacidad</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function panelTipos(){
+  return `<div class="grid"><div class="card span-4"><h2>Nuevo tipo de obra</h2><label>Nombre</label><input id="wt_name"><label>Notas</label><textarea id="wt_notes"></textarea><div class="actions" style="margin-top:12px"><button onclick="openWorkTypeModal()">Nuevo tipo</button></div></div>
+  <div class="card span-8"><h2>Tipos de obra</h2><table><thead><tr><th>Tipo</th><th>Notas</th><th>Etapas</th><th></th></tr></thead><tbody>${db.workTypes.map(w=>`<tr><td>${w.name}</td><td>${w.notes||''}</td><td>${templatesForType(w.name).length}</td><td><button class="bad" onclick="deleteWorkType('${w.id}','${w.name}')">Borrar</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function panelEtapas(){
+  return `<div class="grid"><div class="card span-4"><h2>Nueva etapa de plantilla</h2>
+  <label>Tipo de obra</label><select id="st_type">${db.workTypes.map(w=>`<option>${w.name}</option>`).join('')}</select>
+  <label>Orden</label><input id="st_order" type="number" value="1" min="1">
+  <label>Etapa</label><input id="st_stage" placeholder="Electricidad">
+  <label>Especialidad requerida</label><input id="st_spec" list="specs"><datalist id="specs">${db.specialities.map(s=>`<option value="${s}">`).join('')}</datalist>
+  <label>Duración (días)</label><input id="st_days" type="number" value="1" min="1">
+  <label>Personas necesarias</label><input id="st_crew" type="number" value="1" min="1">
+  <div class="actions" style="margin-top:12px"><button onclick="openStageTemplateModal()">Nueva etapa</button></div></div>
+  <div class="card span-8"><h2>Secuencias por tipo</h2>${db.workTypes.map(w=>`<h3 style="margin-top:16px">${w.name}</h3><table><thead><tr><th>Orden</th><th>Etapa</th><th>Especialidad</th><th>Días</th><th>Equipo</th><th></th></tr></thead><tbody>${templatesForType(w.name).map(t=>`<tr><td>${t.order}</td><td>${t.stage}</td><td>${t.speciality}</td><td>${t.durationDays}</td><td>${t.crewSize}</td><td><button class="bad" title="Borrar etapa" onclick="deleteById('stageTemplates','${t.id}')">Borrar</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">No hay etapas</td></tr>'}</tbody></table>`).join('')}</div></div>`;
+}
+function panelObras(){
+  return `<div class="grid"><div class="card span-4"><h2>Nueva obra</h2>
+  <label>Nombre</label><input id="pr_name">
+  <label>Cliente</label><input id="pr_client">
+  <label>Tipo de obra</label><select id="pr_type">${db.workTypes.map(w=>`<option>${w.name}</option>`).join('')}</select>
+  <label>Fecha prevista de inicio</label><input id="pr_start" type="date" value="${todayISO()}">
+  <label>Prioridad (1 = más urgente)</label><input id="pr_priority" type="number" value="2" min="1" max="9">
+  <label>Estado</label><select id="pr_status"><option>Activa</option><option>Pausada</option><option>Terminada</option></select>
+  <label>Notas</label><textarea id="pr_notes"></textarea>
+  <div class="actions" style="margin-top:12px"><button onclick="openProjectModal()">Nueva obra</button></div></div>
+  <div class="card span-8"><h2>Obras</h2><table><thead><tr><th>Obra</th><th>Cliente</th><th>Tipo</th><th>Inicio</th><th>Prioridad</th><th>Estado</th><th>Etapas</th><th></th></tr></thead><tbody>${db.projects.map(p=>`<tr><td>${p.name}</td><td>${p.client||''}</td><td>${p.workTypeName}</td><td>${fmtDate(p.startDate)}</td><td>${p.priority}</td><td>${p.status}</td><td>${templatesForType(p.workTypeName).length}</td><td><button class="secondary" onclick="editProject('${p.id}')">Editar</button> <button class="bad" onclick="deleteById('projects','${p.id}')">Borrar</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function panelAusencias(){
+  const rows=db.absences.map(a=>{ const e=db.employees.find(x=>x.id===a.employeeId); return `<tr><td>${e?e.name:'-'}</td><td>${fmtDate(a.startDate)}</td><td>${fmtDate(a.endDate)}</td><td>${a.reason||''}</td><td><button class="bad" onclick="deleteById('absences','${a.id}')">Borrar</button></td></tr>`}).join('');
+  return `<div class="grid"><div class="card span-4"><h2>Nueva ausencia</h2><label>Empleado</label><select id="ab_emp">${db.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select><label>Desde</label><input id="ab_start" type="date" value="${todayISO()}"><label>Hasta</label><input id="ab_end" type="date" value="${todayISO()}"><label>Motivo</label><input id="ab_reason"><div class="actions" style="margin-top:12px"><button onclick="openAbsenceModal()">Nueva ausencia</button></div></div>
+  <div class="card span-8"><h2>Ausencias</h2><table><thead><tr><th>Empleado</th><th>Desde</th><th>Hasta</th><th>Motivo</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">No hay ausencias</td></tr>'}</tbody></table></div></div>`;
+}
+function panelPlan(plan){
+  const rows=plan.map(p=>`<tr><td>${p.projectName}</td><td>${p.stageOrder}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.durationDays}</td><td>${p.employeeName?'<span class="pill ok">'+p.employeeName+'</span>':'<span class="pill bad">Sin empleado</span>'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.status==='Sin recurso'?'<span class="pill bad">Sin recurso</span>':'<span class="pill ok">Planificada</span>'}</td></tr>`).join('');
+  const cargas={}; plan.forEach(p=>{if(p.employeeName&&p.employeeId){cargas[p.employeeName]=(cargas[p.employeeName]||0)+p.durationDays;}});
+  return `<div class="grid"><div class="card span-12"><div class="split"><h2>Plan automático</h2><div class="muted">Regla actual: primera persona libre con especialidad válida, respetando orden de etapas, fecha de obra, prioridad y ausencias.</div></div>
+    <table><thead><tr><th>Obra</th><th>Orden</th><th>Etapa</th><th>Especialidad</th><th>Días</th><th>Empleado</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="card span-6"><h2>Carga por empleado</h2><table><thead><tr><th>Empleado</th><th>Días asignados</th></tr></thead><tbody>${Object.entries(cargas).sort((a,b)=>b[1]-a[1]).map(([n,d])=>`<tr><td>${n}</td><td>${d}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Sin asignaciones</td></tr>'}</tbody></table></div>
+    <div class="card span-6"><h2>Límites actuales</h2><p class="muted">Esta versión calcula una asignación bastante útil, pero simplificada. Cada etapa se asigna a una sola persona aunque puedes definir el campo <span class="mono">Personas necesarias</span> para tenerlo modelado. La siguiente mejora sería permitir cuadrillas de varias personas por etapa, arrastres reales por calendario laboral y replanificación parcial.</p></div>
+  </div>`;
+}
+function deleteById(key,id){ if(confirm('¿Seguro que quieres borrar este registro?')){ db[key]=db[key].filter(x=>x.id!==id); save(); render(); } }
+function deleteWorkType(id,name){ if(db.projects.some(p=>p.workTypeName===name)){ alert('No puedes borrar este tipo porque ya está usado en una obra.'); return; } if(confirm('Se borrará también su plantilla de etapas.')){ db.workTypes=db.workTypes.filter(x=>x.id!==id); db.stageTemplates=db.stageTemplates.filter(x=>x.workTypeName!==name); save(); render(); } }
+function openEmployeeModal(id=''){
+  const e=id ? db.employees.find(x=>x.id===id) : {name:'',specialities:[],dailyCapacity:1};
+  openModal(id ? 'Editar empleado' : 'Nuevo empleado', `
+    <label>Nombre</label><input id="m_emp_name" value="${esc(e.name||'')}">
+    <label>Especialidades (separadas por coma)</label><input id="m_emp_specs" value="${esc((e.specialities||[]).join(', '))}" placeholder="Electricidad, Fontanería">
+    <label>Capacidad diaria</label><input id="m_emp_cap" type="number" value="${e.dailyCapacity||1}" min="1">
+  `, ()=>saveEmployeeModal(id));
+}
+function saveEmployeeModal(id=''){
+  const name=document.getElementById('m_emp_name').value.trim();
+  const specs=document.getElementById('m_emp_specs').value.split(',').map(x=>x.trim()).filter(Boolean);
+  const cap=Number(document.getElementById('m_emp_cap').value||1);
+  if(!name||!specs.length){ alert('Rellena nombre y al menos una especialidad.'); return; }
+  specs.forEach(s=>{ if(!db.specialities.includes(s)) db.specialities.push(s); });
+  if(id){
+    const e=db.employees.find(x=>x.id===id);
+    e.name=name; e.specialities=specs; e.dailyCapacity=cap;
+  }else{
+    db.employees.push({id:uid('emp'),name,specialities:specs,dailyCapacity:cap,active:true});
+  }
+  save(); closeModal(); render();
+}
+function addEmployee(){ openEmployeeModal(); }
+function editEmployee(id){ openEmployeeModal(id); }
+function openWorkTypeModal(){
+  openModal('Nuevo tipo de obra', `
+    <label>Nombre</label><input id="m_wt_name">
+    <label>Notas</label><textarea id="m_wt_notes"></textarea>
+  `, saveWorkTypeModal, 'Guardar tipo');
+}
+function saveWorkTypeModal(){
+  const name=document.getElementById('m_wt_name').value.trim();
+  const notes=document.getElementById('m_wt_notes').value.trim();
+  if(!name){ alert('Pon un nombre.'); return; }
+  if(db.workTypes.some(x=>x.name===name)){ alert('Ese tipo ya existe.'); return; }
+  db.workTypes.push({id:uid('wt'),name,notes}); save(); closeModal(); render();
+}
+function addWorkType(){ openWorkTypeModal(); }
+function openStageTemplateModal(){
+  openModal('Nueva etapa de plantilla', `
+    <label>Tipo de obra</label><select id="m_st_type">${db.workTypes.map(w=>`<option>${w.name}</option>`).join('')}</select>
+    <label>Orden</label><input id="m_st_order" type="number" value="1" min="1">
+    <label>Etapa</label><input id="m_st_stage" placeholder="Electricidad">
+    <label>Especialidad requerida</label><input id="m_st_spec" list="m_specs"><datalist id="m_specs">${db.specialities.map(s=>`<option value="${s}">`).join('')}</datalist>
+    <label>Duración (días)</label><input id="m_st_days" type="number" value="1" min="1">
+    <label>Personas necesarias</label><input id="m_st_crew" type="number" value="1" min="1">
+  `, saveStageTemplateModal, 'Guardar etapa');
+}
+function saveStageTemplateModal(){
+  const workTypeName=document.getElementById('m_st_type').value;
+  const order=Number(document.getElementById('m_st_order').value||1);
+  const stage=document.getElementById('m_st_stage').value.trim();
+  const speciality=document.getElementById('m_st_spec').value.trim();
+  const durationDays=Number(document.getElementById('m_st_days').value||1);
+  const crewSize=Number(document.getElementById('m_st_crew').value||1);
+  if(!stage||!speciality){ alert('Rellena etapa y especialidad.'); return; }
+  if(!db.specialities.includes(speciality)) db.specialities.push(speciality);
+  db.stageTemplates.push({id:uid('st'),workTypeName,order,stage,speciality,durationDays,crewSize}); save(); closeModal(); render();
+}
+function addStageTemplate(){ openStageTemplateModal(); }
+function openProjectModal(id=''){
+  const p=id ? db.projects.find(x=>x.id===id) : {name:'',client:'',workTypeName:(db.workTypes[0]&&db.workTypes[0].name)||'',startDate:todayISO(),priority:2,status:'Activa',notes:''};
+  openModal(id ? 'Editar obra' : 'Nueva obra', `
+    <label>Nombre</label><input id="m_pr_name" value="${esc(p.name||'')}">
+    <label>Cliente</label><input id="m_pr_client" value="${esc(p.client||'')}">
+    <label>Tipo de obra</label><select id="m_pr_type">${db.workTypes.map(w=>`<option ${w.name===p.workTypeName?'selected':''}>${w.name}</option>`).join('')}</select>
+    <label>Fecha prevista de inicio</label><input id="m_pr_start" type="date" value="${p.startDate||todayISO()}">
+    <label>Prioridad (1 = más urgente)</label><input id="m_pr_priority" type="number" value="${p.priority||2}" min="1" max="9">
+    <label>Estado</label><select id="m_pr_status">${['Activa','Pausada','Terminada'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select>
+    <label>Notas</label><textarea id="m_pr_notes">${esc(p.notes||'')}</textarea>
+  `, ()=>saveProjectModal(id), id ? 'Guardar cambios' : 'Guardar obra');
+}
+function saveProjectModal(id=''){
+  const name=document.getElementById('m_pr_name').value.trim();
+  const client=document.getElementById('m_pr_client').value.trim();
+  const workTypeName=document.getElementById('m_pr_type').value;
+  const startDate=document.getElementById('m_pr_start').value;
+  const priority=Number(document.getElementById('m_pr_priority').value||2);
+  const status=document.getElementById('m_pr_status').value;
+  const notes=document.getElementById('m_pr_notes').value.trim();
+  if(!name){ alert('Pon un nombre a la obra.'); return; }
+  if(id){
+    const p=db.projects.find(x=>x.id===id);
+    Object.assign(p,{name,client,workTypeName,startDate,priority,status,notes});
+  }else{
+    db.projects.push({id:uid('pr'),name,client,workTypeName,startDate,priority,status,notes});
+  }
+  save(); closeModal(); render();
+}
+function addProject(){ openProjectModal(); }
+function editProject(id){ openProjectModal(id); }
+function openAbsenceModal(){
+  openModal('Nueva ausencia', `
+    <label>Empleado</label><select id="m_ab_emp">${db.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select>
+    <label>Desde</label><input id="m_ab_start" type="date" value="${todayISO()}">
+    <label>Hasta</label><input id="m_ab_end" type="date" value="${todayISO()}">
+    <label>Motivo</label><input id="m_ab_reason">
+  `, saveAbsenceModal, 'Guardar ausencia');
+}
+function saveAbsenceModal(){
+  const employeeId=document.getElementById('m_ab_emp').value;
+  const startDate=document.getElementById('m_ab_start').value;
+  const endDate=document.getElementById('m_ab_end').value;
+  const reason=document.getElementById('m_ab_reason').value.trim();
+  if(!employeeId||!startDate||!endDate){ alert('Rellena empleado y fechas.'); return; }
+  db.absences.push({id:uid('ab'),employeeId,startDate,endDate,reason}); save(); closeModal(); render();
+}
+function addAbsence(){ openAbsenceModal(); }
+renderLogo();
+if(isLoggedIn()){ showApp(); render(); }
+else{ showLogin(); }
+</script>
+
+<div class="modal-backdrop" id="appModalBackdrop" onclick="if(event.target===this) closeModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+    <div class="modal-head">
+      <h3 id="appModalTitle">Editar</h3>
+      <button class="icon-btn" onclick="closeModal()">Cerrar</button>
+    </div>
+    <div class="modal-body" id="appModalBody"></div>
+    <div class="modal-actions" id="appModalActions"></div>
+  </div>
+</div>
+
+</body>
+</html>
