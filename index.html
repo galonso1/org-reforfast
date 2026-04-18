@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Planificación Obras Reforfast</title>
   <style>
-    :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
+     :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
     *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
     header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:22px 24px;box-shadow:0 14px 40px rgba(15,118,110,.18)}
     .header-inner{max-width:1400px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
@@ -557,14 +557,14 @@ function panelObras(){
   <div class="card span-8"><h2>Obras</h2><table><thead><tr><th>Obra</th><th>Cliente</th><th>Tipo</th><th>Inicio</th><th>Prioridad</th><th>Estado</th><th>Etapas</th><th></th></tr></thead><tbody>${db.projects.map(p=>`<tr><td>${p.name}</td><td>${p.client||''}</td><td>${p.workTypeName}</td><td>${fmtDate(p.startDate)}</td><td>${p.priority}</td><td>${p.status}</td><td>${templatesForType(p.workTypeName).length}</td><td><button class="secondary" onclick="editProject('${p.id}')">Editar</button> <button class="bad" onclick="deleteById('projects','${p.id}')">Borrar</button></td></tr>`).join('')}</tbody></table></div></div>`;
 }
 function panelAusencias(){
-  const rows=db.absences.map(a=>{ const e=db.employees.find(x=>x.id===a.employeeId); return `<tr><td>${e?e.name:'-'}</td><td>${fmtDate(a.startDate)}</td><td>${fmtDate(a.endDate)}</td><td>${a.reason||''}</td><td><button class="bad" onclick="deleteById('absences','${a.id}')">Borrar</button></td></tr>`}).join('');
+  const rows=db.absences.map(a=>{ const e=db.employees.find(x=>x.id===a.employeeId); return `<tr><td>${e?e.name:'-'}</td><td>${fmtDate(a.startDate)}</td><td>${fmtDate(a.endDate)}</td><td>${a.reason||''}</td><td><button class="secondary" onclick="openAbsenceModal('${a.id}')">Editar</button> <button class="bad" onclick="deleteById('absences','${a.id}')">Borrar</button></td></tr>`}).join('');
   return `<div class="grid"><div class="card span-4"><h2>Nueva ausencia</h2><p class="muted">Registra vacaciones, bajas o cualquier ausencia desde la ventana emergente.</p><div class="actions" style="margin-top:12px"><button onclick="openAbsenceModal()">Nueva ausencia</button></div></div>
   <div class="card span-8"><h2>Ausencias</h2><table><thead><tr><th>Empleado</th><th>Desde</th><th>Hasta</th><th>Motivo</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">No hay ausencias</td></tr>'}</tbody></table></div></div>`;
 }
 
 
 function panelNoLaborables(){
-  const rows=(db.nonWorkingDays||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(d=>`<tr><td>${fmtDate(d.date)}</td><td>${d.reason||''}</td><td><button class="bad" onclick="deleteNonWorkingDay('${d.id}')">Borrar</button></td></tr>`).join('');
+  const rows=(db.nonWorkingDays||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(d=>`<tr><td>${fmtDate(d.date)}</td><td>${d.reason||''}</td><td><button class="secondary" onclick="openNonWorkingDayModal('${d.id}')">Editar</button> <button class="bad" onclick="deleteNonWorkingDay('${d.id}')">Borrar</button></td></tr>`).join('');
   return `<div class="grid">
     <div class="card span-4">
       <h2>Días no laborables</h2>
@@ -759,7 +759,7 @@ function openEmployeeModal(id=''){
     <label>Nombre</label><input id="m_emp_name" value="${esc(e.name||'')}">
     <label>Especialidades (separadas por coma)</label><input id="m_emp_specs" value="${esc((e.specialities||[]).join(', '))}" placeholder="Electricidad, Fontanería">
     <label>Capacidad diaria</label><input id="m_emp_cap" type="number" value="${e.dailyCapacity||1}" min="1">
-  `, ()=>saveEmployeeModal(id));
+  `, ()=>saveEmployeeModal(id), 'Guardar', id?{showCancel:false}:{});
 }
 function saveEmployeeModal(id=''){
   const name=document.getElementById('m_emp_name').value.trim();
@@ -782,7 +782,7 @@ function openWorkTypeModal(id=''){
   openModal(id ? 'Editar tipo de obra' : 'Nuevo tipo de obra', `
     <label>Nombre</label><input id="m_wt_name" value="${esc(current.name||'')}">
     <label>Notas</label><textarea id="m_wt_notes">${esc(current.notes||'')}</textarea>
-  `, ()=>saveWorkTypeModal(id), id ? 'Guardar cambios' : 'Guardar tipo');
+  `, ()=>saveWorkTypeModal(id), id ? 'Guardar cambios' : 'Guardar tipo', id?{showCancel:false}:{});
 }
 function saveWorkTypeModal(id=''){
   const name=document.getElementById('m_wt_name').value.trim();
@@ -812,7 +812,7 @@ function openStageTemplateModal(id=''){
     <label>Especialidad requerida</label><input id="m_st_spec" value="${esc(current.speciality||'')}" list="m_specs"><datalist id="m_specs">${db.specialities.map(s=>`<option value="${s}">`).join('')}</datalist>
     <label>Duración (días)</label><input id="m_st_days" type="number" value="${current.durationDays||1}" min="1">
     <label>Personas necesarias</label><input id="m_st_crew" type="number" value="${current.crewSize||1}" min="1">
-  `, ()=>saveStageTemplateModal(id), id ? 'Guardar cambios' : 'Guardar etapa');
+  `, ()=>saveStageTemplateModal(id), id ? 'Guardar cambios' : 'Guardar etapa', id?{showCancel:false}:{});
 }
 function saveStageTemplateModal(id=''){
   const workTypeName=document.getElementById('m_st_type').value;
@@ -842,7 +842,7 @@ function openProjectModal(id=''){
     <label>Prioridad (1 = más urgente)</label><input id="m_pr_priority" type="number" value="${p.priority||2}" min="1" max="9">
     <label>Estado</label><select id="m_pr_status">${['Activa','Pausada','Terminada'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select>
     <label>Notas</label><textarea id="m_pr_notes">${esc(p.notes||'')}</textarea>
-  `, ()=>saveProjectModal(id), id ? 'Guardar cambios' : 'Guardar obra');
+  `, ()=>saveProjectModal(id), id ? 'Guardar cambios' : 'Guardar obra', id?{showCancel:false}:{});
 }
 function saveProjectModal(id=''){
   const name=document.getElementById('m_pr_name').value.trim();
@@ -863,21 +863,30 @@ function saveProjectModal(id=''){
 }
 function addProject(){ openProjectModal(); }
 function editProject(id){ openProjectModal(id); }
-function openAbsenceModal(){
-  openModal('Nueva ausencia', `
-    <label>Empleado</label><select id="m_ab_emp">${db.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select>
-    <label>Desde</label><input id="m_ab_start" type="date" value="${todayISO()}">
-    <label>Hasta</label><input id="m_ab_end" type="date" value="${todayISO()}">
-    <label>Motivo</label><input id="m_ab_reason">
-  `, saveAbsenceModal, 'Guardar ausencia');
+function openAbsenceModal(id=''){
+  const current=id ? db.absences.find(x=>x.id===id) : null;
+  openModal(current?'Editar ausencia':'Nueva ausencia', `
+    <label>Empleado</label><select id="m_ab_emp">${db.employees.map(e=>`<option value="${e.id}" ${(current&&current.employeeId===e.id)?'selected':''}>${e.name}</option>`).join('')}</select>
+    <label>Desde</label><input id="m_ab_start" type="date" value="${current?current.startDate:todayISO()}">
+    <label>Hasta</label><input id="m_ab_end" type="date" value="${current?current.endDate:todayISO()}">
+    <label>Motivo</label><input id="m_ab_reason" value="${esc(current?current.reason||'':'')}">
+  `, ()=>saveAbsenceModal(id), current?'Guardar cambios':'Guardar ausencia', current?{showCancel:false}:{});
 }
-function saveAbsenceModal(){
+function saveAbsenceModal(id=''){
   const employeeId=document.getElementById('m_ab_emp').value;
   const startDate=document.getElementById('m_ab_start').value;
   const endDate=document.getElementById('m_ab_end').value;
   const reason=document.getElementById('m_ab_reason').value.trim();
   if(!employeeId||!startDate||!endDate){ alert('Rellena empleado y fechas.'); return; }
-  db.absences.push({id:uid('ab'),employeeId,startDate,endDate,reason}); save(); closeModal(); render();
+  if(endDate < startDate){ alert('La fecha fin no puede ser anterior a la fecha inicio.'); return; }
+  const payload={id:id||uid('ab'),employeeId,startDate,endDate,reason};
+  if(id){
+    const idx=db.absences.findIndex(x=>x.id===id);
+    if(idx>=0) db.absences[idx]=payload;
+  }else{
+    db.absences.push(payload);
+  }
+  save(); closeModal(); render();
 }
 
 function openNonWorkingDayModal(id=''){
@@ -885,7 +894,7 @@ function openNonWorkingDayModal(id=''){
   openModal(item?'Editar día no laborable':'Nuevo día no laborable', `
     <label>Fecha</label><input id="m_nwd_date" type="date" value="${item?item.date:todayISO()}">
     <label>Motivo</label><input id="m_nwd_reason" value="${esc(item?item.reason||'':'')}" placeholder="Festivo local, puente, cierre excepcional...">
-  `, ()=>saveNonWorkingDayModal(id), item?'Guardar cambios':'Guardar fecha');
+  `, ()=>saveNonWorkingDayModal(id), item?'Guardar cambios':'Guardar fecha', item?{showCancel:false}:{});
 }
 function saveNonWorkingDayModal(id=''){
   const date=document.getElementById('m_nwd_date').value;
