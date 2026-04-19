@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Planificación Obras Reforfast</title>
   <style>
-    :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
+  :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
     *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
     header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:22px 24px;box-shadow:0 14px 40px rgba(15,118,110,.18)}
     .header-inner{max-width:1400px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
@@ -237,7 +237,7 @@ const SESSION_KEY='planificador_reformas_session_v1';
 const PROFILE_CACHE_KEY='planificador_reformas_profile_v1';
 const SUPABASE_URL='https://ozwucqfmampacipwptcq.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96d3VjcWZtYW1wYWNpcHdwdGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1OTIzODIsImV4cCI6MjA5MjE2ODM4Mn0.JqzjU2V_Jjvi6dfip3R3PA8bKkDTknGlp_RLtph2y2Q';
-const APP_DATA_ROW_ID='2ef0a7cf-1e64-4a17-9116-b7f86d2bf001';
+const APP_DATA_KEY='global';
 const AUTH_STORAGE_KEY='reforfast_supabase_session_v1';
 function getStoredSession(){
   try { return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)||'null'); } catch(e){ return null; }
@@ -277,7 +277,7 @@ async function fetchProfileByUser(userId, accessToken){
   return Array.isArray(json) ? (json[0] || null) : json;
 }
 async function readAppData(accessToken){
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/app_data?id=eq.${encodeURIComponent(APP_DATA_ROW_ID)}&select=id,data`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/app_data?key=eq.${encodeURIComponent(APP_DATA_KEY)}&select=key,data`, {
     headers: authHeaders(accessToken, { 'Accept':'application/json' })
   });
   const json = await res.json().catch(()=>[]);
@@ -285,10 +285,10 @@ async function readAppData(accessToken){
   return Array.isArray(json) ? (json[0] || null) : json;
 }
 async function upsertAppData(accessToken, payload){
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/app_data`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/app_data?on_conflict=key`, {
     method:'POST',
     headers: authHeaders(accessToken, { 'Prefer':'resolution=merge-duplicates,return=minimal' }),
-    body: JSON.stringify([{ id: APP_DATA_ROW_ID, data: payload }])
+    body: JSON.stringify([{ key: APP_DATA_KEY, data: payload }])
   });
   if(!res.ok) throw new Error('No se han podido guardar los datos compartidos. Revisa las políticas de app_data.');
 }
@@ -367,33 +367,43 @@ const defaultData={
   manualOverrides:[],
   nonWorkingDays:[]
 };
-let db=loadLocal();
+let db=clone(defaultData);
 let companyLogo='';
 function loadLocal(){ try{ return Object.assign(clone(defaultData), JSON.parse(localStorage.getItem(LS_KEY)||'{}')); }catch(e){ return clone(defaultData);} }
 function normalizeDb(data){ return Object.assign(clone(defaultData), data||{}); }
 async function loadFromSupabase(){
   const session = getStoredSession();
-  if(!session || !session.access_token) return;
+  if(!session || !session.access_token) return false;
   try{
     const data = await readAppData(session.access_token);
     if(data && data.data){
       db = normalizeDb(data.data);
       localStorage.setItem(LS_KEY, JSON.stringify(db));
-      return;
+      return true;
     }
-    await save();
+    const local = loadLocal();
+    db = normalizeDb(local);
+    await upsertAppData(session.access_token, db);
+    localStorage.setItem(LS_KEY, JSON.stringify(db));
+    return true;
   }catch(err){
     console.warn('No se pudieron cargar los datos desde Supabase', err);
+    const local = loadLocal();
+    db = normalizeDb(local);
+    return false;
   }
 }
 async function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(db));
   const session = getStoredSession();
-  if(!session || !session.access_token) return;
+  if(!session || !session.access_token) return false;
   try{
     await upsertAppData(session.access_token, db);
+    localStorage.setItem('LAST_REMOTE_SYNC', new Date().toISOString());
+    return true;
   }catch(err){
     console.warn('No se pudieron guardar los datos en Supabase', err);
+    return false;
   }
 }
 function resetDemo(){ if(confirm('Se borrarán los datos actuales y se restaurará la demo.')){ db=clone(defaultData); save(); render(); }}
@@ -583,16 +593,16 @@ function computePlan(){
         if(emp){
           nextFree[emp.id]=nextWorkdayAfter(endDate, blockedSet);
         }
-        plan.push({...task, employeeId:manual.employeeId||'', employeeName, startDate, endDate, status:'Manual', isManual:true, manualId:manual.id, manualNote:manual.note||''});
+        plan.push({...task, employeeId:manual.employeeId||'', employeeIds:manual.employeeId?[manual.employeeId]:[], employeeName, startDate, endDate, status:'Manual', isManual:true, manualId:manual.id, manualNote:manual.note||''});
         prevEnd=nextWorkdayAfter(endDate, blockedSet);
         continue;
       }
       const eligible=employees.filter(e=>e.specialities.includes(task.speciality));
       if(!eligible.length){
-        plan.push({...task, employeeId:'', employeeName:'SIN EMPLEADO', startDate:'', endDate:'', status:'Sin recurso', isManual:false});
+        plan.push({...task, employeeId:'', employeeIds:[], employeeName:'SIN EMPLEADO', startDate:'', endDate:'', status:'Sin recurso', isManual:false});
         continue;
       }
-      let best=null;
+      const assigned=[];
       for(const e of eligible){
         let candidate = nextFree[e.id] > prevEnd ? nextFree[e.id] : prevEnd;
         candidate = nextWorkingDate(candidate, blockedSet);
@@ -613,12 +623,20 @@ function computePlan(){
           }
           guard++;
         }
-        const score = [candidate, p.priority, e.name];
-        if(!best || score.join('|') < best.score.join('|')) best={emp:e, startDate:candidate, score};
+        assigned.push({emp:e, startDate:candidate, score:[candidate, p.priority, e.name]});
       }
-      const endDate=addWorkingDays(best.startDate, task.durationDays, blockedSet);
-      nextFree[best.emp.id]=nextWorkdayAfter(endDate, blockedSet);
-      plan.push({...task, employeeId:best.emp.id, employeeName:best.emp.name, startDate:best.startDate, endDate, status:'Planificada', isManual:false});
+      assigned.sort((a,b)=> a.score.join('|').localeCompare(b.score.join('|')));
+      const selected=assigned.slice(0, Math.max(1, Number(task.crewSize)||1));
+      if(!selected.length){
+        plan.push({...task, employeeId:'', employeeIds:[], employeeName:'SIN EMPLEADO', startDate:'', endDate:'', status:'Sin recurso', isManual:false});
+        continue;
+      }
+      const startDate=selected.reduce((max,a)=> a.startDate>max?a.startDate:max, prevEnd);
+      const endDate=addWorkingDays(startDate, task.durationDays, blockedSet);
+      selected.forEach(a=>{ nextFree[a.emp.id]=nextWorkdayAfter(endDate, blockedSet); });
+      const employeeIds=selected.map(a=>a.emp.id);
+      const employeeName=selected.map(a=>a.emp.name).join(', ');
+      plan.push({...task, employeeId:employeeIds[0]||'', employeeIds, employeeName, startDate, endDate, status:selected.length < Math.max(1, Number(task.crewSize)||1)?'Planificada parcial':'Planificada', isManual:false});
       prevEnd=nextWorkdayAfter(endDate, blockedSet);
     }
   }
@@ -859,22 +877,26 @@ function buildCalendarRows(plan, monthStart, monthEnd, blockedSet){
     const map={};
     db.employees.filter(e=>e.active).forEach(e=>map[e.id]={label:e.name, sub:e.specialities.join(', '), cells:{}});
     plan.filter(t=>overlapsMonth(t,monthStart,monthEnd)).forEach(task=>{
-      if(!task.employeeId) return;
-      if(!map[task.employeeId]) map[task.employeeId]={label:task.employeeName||'Empleado',sub:'',cells:{}};
+      const ids=(task.employeeIds && task.employeeIds.length)?task.employeeIds:(task.employeeId?[task.employeeId]:[]);
+      if(!ids.length) return;
       const dates=getTaskCalendarDates(task, blockedSet).filter(d=>d>=monthStart&&d<=monthEnd);
-      dates.forEach(date=>{
-        map[task.employeeId].cells[date]={
-          type:task.isManual?'manual':'auto',
-          text:`${task.projectName} · ${task.stage}`,
-          title:`${task.projectName} · ${task.stage} (${task.employeeName||'-'})`,
-          clickable:true,
-          projectName:task.projectName,
-          stage:task.stage,
-          employeeName:task.employeeName||'',
-          startDate:task.startDate||'',
-          endDate:task.endDate||'',
-          mode:task.isManual?'Manual':'Automática'
-        };
+      ids.forEach(empId=>{
+        const emp=db.employees.find(e=>e.id===empId);
+        if(!map[empId]) map[empId]={label:(emp&&emp.name)||'Empleado',sub:(emp&&emp.specialities.join(', '))||'',cells:{}};
+        dates.forEach(date=>{
+          map[empId].cells[date]={
+            type:task.isManual?'manual':'auto',
+            text:`${task.projectName} · ${task.stage}`,
+            title:`${task.projectName} · ${task.stage} (${(emp&&emp.name)||task.employeeName||'-'})`,
+            clickable:true,
+            projectName:task.projectName,
+            stage:task.stage,
+            employeeName:(emp&&emp.name)||'',
+            startDate:task.startDate||'',
+            endDate:task.endDate||'',
+            mode:task.isManual?'Manual':'Automática'
+          };
+        });
       });
     });
     return Object.values(map).map(r=>({primary:r.label, secondary:r.sub||'—', tertiary:'', cells:r.cells})).filter(r=>Object.keys(r.cells).length);
@@ -882,7 +904,8 @@ function buildCalendarRows(plan, monthStart, monthEnd, blockedSet){
   return plan.filter(t=>overlapsMonth(t,monthStart,monthEnd)).map(task=>{
     const cells={};
     const dates=getTaskCalendarDates(task, blockedSet).filter(d=>d>=monthStart&&d<=monthEnd);
-    dates.forEach(date=>{cells[date]={type:task.employeeId?(task.isManual?'manual':'auto'):'empty',text:'',title:`${task.projectName} · ${task.stage} · ${task.employeeName||'Sin empleado'}`};});
+    const hasEmployees=(task.employeeIds && task.employeeIds.length) || task.employeeId;
+    dates.forEach(date=>{cells[date]={type:hasEmployees?(task.isManual?'manual':'auto'):'empty',text:'',title:`${task.projectName} · ${task.stage} · ${task.employeeName||'Sin empleado'}`};});
     return {
       primary:task.projectName,
       secondary:`${task.stageOrder}. ${task.stage}`,
@@ -912,8 +935,8 @@ function panelCalendario(plan){
   const rows=buildCalendarRows(plan, range.start, range.end, blockedSet);
   const visibleTasks=plan.filter(t=>overlapsMonth(t, range.start, range.end));
   const manualCount=visibleTasks.filter(t=>t.isManual).length;
-  const autoCount=visibleTasks.filter(t=>t.employeeId && !t.isManual).length;
-  const emptyCount=visibleTasks.filter(t=>!t.employeeId).length;
+  const autoCount=visibleTasks.filter(t=>((t.employeeIds && t.employeeIds.length) || t.employeeId) && !t.isManual).length;
+  const emptyCount=visibleTasks.filter(t=>!((t.employeeIds && t.employeeIds.length) || t.employeeId)).length;
   return `<div class="grid">
     <div class="card span-12">
       <div class="calendar-toolbar">
@@ -950,8 +973,8 @@ function panelCalendario(plan){
 }
 
 function panelPlan(plan){
-  const rows=plan.map(p=>`<tr><td>${p.projectName}</td><td>${p.stageOrder}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.durationDays}</td><td>${p.employeeName?'<span class="pill ok">'+p.employeeName+'</span>':'<span class="pill bad">Sin empleado</span>'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.status==='Sin recurso'?'<span class="pill bad">Sin recurso</span>':(p.isManual?'<span class="pill warn">Manual</span>':'<span class="pill ok">Planificada</span>')}</td><td><button class="secondary" onclick="openManualOverrideModal('', '${p.projectId}', '${p.stageOrder}')">Asignar manual</button></td></tr>`).join('');
-  const cargas={}; plan.forEach(p=>{if(p.employeeName&&p.employeeId){cargas[p.employeeName]=(cargas[p.employeeName]||0)+p.durationDays;}});
+  const rows=plan.map(p=>`<tr><td>${p.projectName}</td><td>${p.stageOrder}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.durationDays}</td><td>${p.employeeName?'<span class="pill ok">'+p.employeeName+'</span>':'<span class="pill bad">Sin empleado</span>'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.status==='Sin recurso'?'<span class="pill bad">Sin recurso</span>':(p.isManual?'<span class="pill warn">Manual</span>':(p.status==='Planificada parcial'?'<span class="pill warn">Parcial</span>':'<span class="pill ok">Planificada</span>'))}</td><td><button class="secondary" onclick="openManualOverrideModal('', '${p.projectId}', '${p.stageOrder}')">Asignar manual</button></td></tr>`).join('');
+  const cargas={}; plan.forEach(p=>{const names=(p.employeeName||'').split(',').map(x=>x.trim()).filter(Boolean); names.forEach(name=>{cargas[name]=(cargas[name]||0)+p.durationDays;});});
   return `<div class="grid"><div class="card span-12"><div class="split"><h2>Plan automático</h2><div class="muted">Regla actual: primera persona libre con especialidad válida, respetando orden de etapas, fecha de obra, prioridad, ausencias, domingos y días no laborables. Puedes forzar excepciones con asignación manual.</div></div>
     <table><thead><tr><th>Obra</th><th>Orden</th><th>Etapa</th><th>Especialidad</th><th>Días</th><th>Empleado</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="card span-6"><h2>Carga por empleado</h2><table><thead><tr><th>Empleado</th><th>Días asignados</th></tr></thead><tbody>${Object.entries(cargas).sort((a,b)=>b[1]-a[1]).map(([n,d])=>`<tr><td>${n}</td><td>${d}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Sin asignaciones</td></tr>'}</tbody></table></div>
