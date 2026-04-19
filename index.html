@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Planificación Obras Reforfast</title>
   <style>
-  :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
+    :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
     *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
     header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:22px 24px;box-shadow:0 14px 40px rgba(15,118,110,.18)}
     .header-inner{max-width:1400px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
@@ -107,6 +107,60 @@
     .bar.clickable{cursor:pointer;box-shadow:0 0 0 1px rgba(15,23,42,.08)}
     .mini-stat{padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff}
     .mini-stat strong{display:block;font-size:18px}
+
+    @media(max-width:960px){
+      body{font-size:15px}
+      header{padding:16px 14px}
+      .header-inner{align-items:flex-start;gap:12px}
+      .brand-block{width:100%;gap:12px;align-items:flex-start}
+      .logo-box{width:56px;height:56px;border-radius:14px}
+      header h1{font-size:22px;line-height:1.15}
+      header p{font-size:13px}
+      .wrap{padding:12px}
+      .tabs{gap:8px;overflow:auto;flex-wrap:nowrap;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+      .tab{white-space:nowrap;padding:10px 14px;font-size:14px;flex:0 0 auto}
+      .card{padding:14px;border-radius:16px}
+      .actions{gap:6px}
+      button{width:100%;justify-content:center}
+      .actions button,.actions label.secondary{width:100%}
+      .split{align-items:flex-start;flex-direction:column}
+      .split .actions{width:100%}
+      .split .actions button,.split .actions label.secondary{width:100%}
+      .kpi{font-size:26px}
+      .modal{width:min(100%,560px);max-height:90vh;display:flex;flex-direction:column}
+      .modal-body{overflow:auto}
+      .modal-actions{flex-direction:column}
+      .modal-actions button{width:100%}
+      table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+      .calendar-toolbar{align-items:flex-start}
+      .calendar-tools{width:100%}
+      .calendar-tools button,.calendar-tools input,.calendar-tools select{width:100%}
+      .calendar-grid{min-width:980px}
+      .calendar-grid .sticky-col{min-width:170px;max-width:170px}
+      .calendar-grid .sticky-col.second{left:170px;min-width:150px;max-width:150px}
+      .calendar-grid .sticky-col.third{left:320px;min-width:120px;max-width:120px}
+      .calendar-grid .day-head,.calendar-grid td.day{min-width:28px;width:28px}
+      .bar{line-height:28px;font-size:9px}
+      .mini-stat{flex:1 1 140px}
+      input,select,textarea{font-size:16px}
+    }
+
+    @media(max-width:640px){
+      .login-screen{padding:14px}
+      .login-card{padding:20px;border-radius:18px}
+      .login-top{align-items:flex-start}
+      .login-title{font-size:21px}
+      .grid{gap:12px}
+      .card h2,.card h3{font-size:18px}
+      .pill{font-size:11px}
+      .small{font-size:11px}
+      .calendar-grid{min-width:860px}
+      .calendar-grid .sticky-col{min-width:140px;max-width:140px;padding:8px}
+      .calendar-grid .sticky-col.second{left:140px;min-width:120px;max-width:120px}
+      .calendar-grid .sticky-col.third{left:260px;min-width:100px;max-width:100px}
+      .calendar-grid .day-head,.calendar-grid td.day{min-width:26px;width:26px;height:26px}
+      .bar{line-height:26px;font-size:8px}
+    }
 
   </style>
 </head>
@@ -336,6 +390,14 @@ function logoutApp(){
   document.getElementById('loginPassword').value='';
 }
 
+function renderRoleBadge(){
+  const badge=document.getElementById('roleBadge');
+  if(!badge) return;
+  const role=localStorage.getItem('APP_ROLE')||'';
+  badge.textContent = role==='admin' ? 'Usuario Administrador' : (role==='office' ? 'Usuario Oficina' : '');
+  badge.style.display = badge.textContent ? 'inline-flex' : 'none';
+}
+
 function exportJSON(){ const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='planificador_reformas_datos.json'; a.click(); }
 function importJSON(file){ const reader=new FileReader(); reader.onload=()=>{ try{ db=JSON.parse(reader.result); save(); render(); alert('Datos importados correctamente.'); }catch(e){ alert('El archivo no es válido.'); } }; reader.readAsText(file); }
 function templatesForType(name){ return db.stageTemplates.filter(x=>x.workTypeName===name).sort((a,b)=>a.order-b.order); }
@@ -498,6 +560,7 @@ function deleteManualOverride(id){
 function render(){
   save();
   renderLogo();
+  renderRoleBadge();
   const badge=document.getElementById('roleBadge');
   if(badge && isLoggedIn()) badge.textContent=roleLabel();
   const allowedTabs=visibleTabs();
