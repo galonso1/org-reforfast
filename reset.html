@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Restablecer contraseña · Reforfast</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--bad:#b91c1c;--ok:#166534;--brand-dark:#9fb808}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#f3f8d7 0%,#f6f8fb 55%,#eef7ff 100%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{width:100%;max-width:460px;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 60px rgba(15,23,42,.10);padding:28px}
+    .top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+    .logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:900;overflow:hidden;flex:0 0 auto}
+    .logo img{width:100%;height:100%;object-fit:contain;background:#fff}
+    h1{margin:0;font-size:24px;line-height:1.1}
+    .sub{margin:4px 0 0;color:var(--muted);font-size:14px}
+    label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px;font-weight:700}
+    input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;font:inherit}
+    button{margin-top:18px;width:100%;background:var(--brand);color:#fff;border:none;border-radius:12px;padding:13px 16px;font-weight:800;cursor:pointer;font:inherit;box-shadow:0 6px 18px rgba(15,118,110,.12)}
+    button:hover{background:var(--brand-dark)}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .msg{display:none;margin-top:12px;padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700}
+    .msg.show{display:block}
+    .msg.error{background:#fef2f2;border:1px solid #fecaca;color:var(--bad)}
+    .msg.ok{background:#ecfdf5;border:1px solid #bbf7d0;color:var(--ok)}
+    .help{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.45}
+    .link{display:inline-block;margin-top:14px;color:#0f172a;text-decoration:none;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="logo" id="logoBox">RF</div>
+      <div>
+        <h1>Restablecer contraseña</h1>
+        <p class="sub">Introduce una nueva contraseña para tu acceso a Reforfast.</p>
+      </div>
+    </div>
+
+    <label>Nueva contraseña</label>
+    <input id="password" type="password" placeholder="Escribe la nueva contraseña">
+
+    <label>Repetir contraseña</label>
+    <input id="password2" type="password" placeholder="Repite la nueva contraseña" onkeydown="if(event.key==='Enter') updatePassword()">
+
+    <button id="saveBtn" onclick="updatePassword()">Guardar nueva contraseña</button>
+
+    <div id="errorMsg" class="msg error"></div>
+    <div id="okMsg" class="msg ok"></div>
+
+    <a class="link" href="https://galonso1.github.io/org-reforfast/">Volver al acceso</a>
+    <div class="help">Si has abierto este enlace desde el correo de Supabase, esta pantalla actualizará tu contraseña directamente y luego podrás volver a entrar a la app.</div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ozwucqfmampacipwptcq.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96d3VjcWZtYW1wYWNpcHdwdGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1OTIzODIsImV4cCI6MjA5MjE2ODM4Mn0.JqzjU2V_Jjvi6dfip3R3PA8bKkDTknGlp_RLtph2y2Q";
+
+    function setMsg(id, text, show=true){
+      const el=document.getElementById(id);
+      el.textContent=text||'';
+      el.classList.toggle('show', !!show && !!text);
+    }
+
+    function getTokensFromUrl(){
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const search = new URLSearchParams(window.location.search);
+      return {
+        access_token: hash.get('access_token') || search.get('access_token'),
+        refresh_token: hash.get('refresh_token') || search.get('refresh_token'),
+        type: hash.get('type') || search.get('type')
+      };
+    }
+
+    async function updatePassword(){
+      setMsg('errorMsg','',false);
+      setMsg('okMsg','',false);
+
+      const password = document.getElementById('password').value;
+      const password2 = document.getElementById('password2').value;
+      const btn = document.getElementById('saveBtn');
+      const { access_token, refresh_token, type } = getTokensFromUrl();
+
+      if(!access_token || !refresh_token){
+        setMsg('errorMsg','El enlace de recuperación no es válido o ha caducado. Vuelve a solicitar un nuevo correo.');
+        return;
+      }
+      if(type && type !== 'recovery'){
+        setMsg('errorMsg','Este enlace no corresponde a una recuperación de contraseña.');
+        return;
+      }
+      if(!password || password.length < 6){
+        setMsg('errorMsg','La nueva contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+      if(password !== password2){
+        setMsg('errorMsg','Las contraseñas no coinciden.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        // 1) Intercambiar los tokens del enlace por una sesión real
+        const tokenResp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ refresh_token })
+        });
+
+        const tokenData = await tokenResp.json();
+        if(!tokenResp.ok){
+          throw new Error(tokenData.error_description || tokenData.msg || tokenData.error || 'No se pudo validar el enlace de recuperación.');
+        }
+
+        const sessionAccessToken = tokenData.access_token || access_token;
+
+        // 2) Actualizar contraseña del usuario autenticado por ese token
+        const updateResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          method: 'PUT',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${sessionAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ password })
+        });
+
+        const updateData = await updateResp.json();
+        if(!updateResp.ok){
+          throw new Error(updateData.error_description || updateData.msg || updateData.error || 'No se pudo actualizar la contraseña.');
+        }
+
+        setMsg('okMsg','Contraseña actualizada correctamente. Ya puedes volver al acceso e iniciar sesión con la nueva contraseña.');
+        document.getElementById('password').value='';
+        document.getElementById('password2').value='';
+      } catch(err){
+        setMsg('errorMsg', err.message || 'Ha ocurrido un error al actualizar la contraseña.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar nueva contraseña';
+      }
+    }
+
+    (function loadLogo(){
+      const candidates=['logo.png','logo.jpg','logo.jpeg','logo.webp','logo.svg','Logo.png','Logo.jpg','LOGO.png'];
+      let i=0;
+      const box=document.getElementById('logoBox');
+      function tryNext(){
+        if(i>=candidates.length) return;
+        const src=candidates[i++];
+        const img=new Image();
+        img.onload=()=>{ box.innerHTML=`<img src="${src}" alt="Logo">`; };
+        img.onerror=tryNext;
+        img.src=src;
+      }
+      tryNext();
+    })();
+  </script>
+</body>
+</html>
