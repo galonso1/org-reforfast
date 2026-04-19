@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Planificación Obras Reforfast</title>
   <style>
-  :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
+ :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
     *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
     header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:22px 24px;box-shadow:0 14px 40px rgba(15,118,110,.18)}
     .header-inner{max-width:1400px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
@@ -473,7 +473,7 @@ function isAdmin(){ return getCurrentRole()==='admin'; }
 function isOffice(){ return getCurrentRole()==='office'; }
 function isLoggedIn(){ return !!getCurrentRole(); }
 function visibleTabs(){
-  return isAdmin() ? tabs : tabs.filter(([id])=>id!=='plan');
+  return tabs;
 }
 function roleLabel(){
   return isAdmin() ? 'Usuario Administrador' : 'Usuario Oficina';
@@ -586,14 +586,13 @@ function computePlan(){
     for(const task of projectTasks(p)){
       const manual=getManualOverrideForTask(task);
       if(manual){
-        const emp=employeeMap[manual.employeeId];
-        const employeeName=emp ? emp.name : 'EMPLEADO NO DISPONIBLE';
+        const manualEmployeeIds=getManualOverrideEmployeeIds(manual);
+        const manualEmployees=manualEmployeeIds.map(id=>employeeMap[id]).filter(Boolean);
+        const employeeName=manualEmployees.length ? manualEmployees.map(emp=>emp.name).join(', ') : 'EMPLEADOS NO DISPONIBLES';
         const startDate=manual.startDate||prevEnd;
         const endDate=manual.endDate||startDate;
-        if(emp){
-          nextFree[emp.id]=nextWorkdayAfter(endDate, blockedSet);
-        }
-        plan.push({...task, employeeId:manual.employeeId||'', employeeIds:manual.employeeId?[manual.employeeId]:[], employeeName, startDate, endDate, status:'Manual', isManual:true, manualId:manual.id, manualNote:manual.note||''});
+        manualEmployees.forEach(emp=>{ nextFree[emp.id]=nextWorkdayAfter(endDate, blockedSet); });
+        plan.push({...task, employeeId:manualEmployeeIds[0]||'', employeeIds:manualEmployeeIds, employeeName, startDate, endDate, status:'Manual', isManual:true, manualId:manual.id, manualNote:manual.note||''});
         prevEnd=nextWorkdayAfter(endDate, blockedSet);
         continue;
       }
@@ -651,26 +650,49 @@ function kpis(plan){
 }
 function html(strings,...vals){ return strings.reduce((a,s,i)=>a+s+(vals[i]??''),''); }
 const tabs=[
-  ['resumen','Resumen'],['empleados','Empleados'],['tipos','Tipos de obra'],['etapas','Etapas de obra'],['obras','Obras'],['ausencias','Ausencias'],['nolaborables','Días no laborables'],['manual','Asignación manual'],['calendario','Calendario'],['plan','Plan automático']
+  ['resumen','Resumen'],['empleados','Empleados'],['tipos','Tipos de obra'],['etapas','Etapas de obra'],['obras','Obras'],['ausencias','Ausencias'],['nolaborables','Días no laborables'],['manual','Asignación manual'],['calendario','Calendario'],['plan','Plan General']
 ];
 let active='resumen';
 let calendarState={month:todayISO().slice(0,7),view:'works'};
 
-function openManualOverrideModal(id='', presetProjectId='', presetStageOrder=''){
+function getManualOverrideEmployeeIds(item){
+  if(!item) return [];
+  if(Array.isArray(item.employeeIds) && item.employeeIds.length) return item.employeeIds;
+  if(item.employeeId) return [item.employeeId];
+  return [];
+}
+function renderManualOverrideEmployeeOptions(projectId, stageOrder, selectedEmployeeIds=[]){
+  const project=db.projects.find(p=>p.id===projectId);
+  if(!project) return '<div class="muted">No hay obra seleccionada.</div>';
+  const stages=templatesForType(project.workTypeName);
+  const st=stages.find(t=>String(t.order)===String(stageOrder)) || stages[0];
+  const spec=st ? st.speciality : '';
+  const crewSize=Math.max(1, Number(st?.crewSize)||1);
+  const eligible=db.employees.filter(e=>e.active && (!spec || e.specialities.includes(spec)));
+  if(!eligible.length) return '<div class="muted">No hay empleados disponibles con esta especialidad.</div>';
+  return `<div class="small muted" style="margin-bottom:8px">Especialidad requerida: <strong>${esc(spec||'-')}</strong> · Personas necesarias: <strong>${crewSize}</strong></div>
+    <div style="display:grid;gap:8px">${eligible.map(e=>`<label style="display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer"><input type="checkbox" class="m_mo_employee_check" value="${e.id}" ${selectedEmployeeIds.includes(e.id)?'checked':''} style="width:auto"> <span>${esc(e.name)}</span></label>`).join('')}</div>`;
+}
+function openManualOverrideModal(id='', presetProjectId='', presetStageOrder='', presetEmployeeIds='', presetStartDate='', presetEndDate='', presetNote=''){
   const current=id ? (db.manualOverrides||[]).find(x=>x.id===id) : null;
+  const currentEmployeeIds=getManualOverrideEmployeeIds(current);
+  const presetIds=(Array.isArray(presetEmployeeIds)?presetEmployeeIds:String(presetEmployeeIds||'').split(',').map(x=>x.trim()).filter(Boolean));
   const selectedProjectId=current?current.projectId:(presetProjectId||((db.projects[0]&&db.projects[0].id)||''));
   const project=db.projects.find(p=>p.id===selectedProjectId) || db.projects[0] || null;
   const selectedStage = String(current?current.stageOrder:(presetStageOrder||''));
+  const selectedEmployeeIds = current ? currentEmployeeIds : presetIds;
+  const selectedStartDate = current ? current.startDate : (presetStartDate||todayISO());
+  const selectedEndDate = current ? current.endDate : (presetEndDate||selectedStartDate);
+  const selectedNote = current ? (current.note||'') : (presetNote||'');
   const stageOptions=project ? templatesForType(project.workTypeName).map(t=>`<option value="${t.order}" ${selectedStage===String(t.order)?'selected':''}>${t.order}. ${t.stage} (${t.speciality})</option>`).join('') : '';
-  const selectedSpec = project ? ((templatesForType(project.workTypeName).find(t=>String(t.order)===selectedStage)||templatesForType(project.workTypeName)[0]||{}).speciality||'') : '';
-  const employeeOptions=db.employees.filter(e=>e.active && (!selectedSpec || e.specialities.includes(selectedSpec))).map(e=>`<option value="${e.id}" ${current&&current.employeeId===e.id?'selected':''}>${e.name}</option>`).join('');
+  const employeeOptionsHtml=renderManualOverrideEmployeeOptions(selectedProjectId, selectedStage, selectedEmployeeIds);
   openModal(current?'Editar asignación manual':'Nueva asignación manual', `
     <label>Obra</label><select id="m_mo_project" onchange="refreshManualOverrideModal()">${db.projects.filter(p=>p.status!=='Terminada').map(p=>`<option value="${p.id}" ${p.id===selectedProjectId?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
     <label>Etapa</label><select id="m_mo_stage">${stageOptions}</select>
-    <label>Empleado</label><select id="m_mo_employee">${employeeOptions}</select>
-    <label>Desde</label><input id="m_mo_start" type="date" value="${current?current.startDate:todayISO()}">
-    <label>Hasta</label><input id="m_mo_end" type="date" value="${current?current.endDate:todayISO()}">
-    <label>Motivo / nota</label><textarea id="m_mo_note">${esc(current?current.note||'':'')}</textarea>
+    <label>Empleados</label><div id="m_mo_employees" data-selected="${esc(selectedEmployeeIds.join(','))}">${employeeOptionsHtml}</div>
+    <label>Desde</label><input id="m_mo_start" type="date" value="${selectedStartDate}">
+    <label>Hasta</label><input id="m_mo_end" type="date" value="${selectedEndDate}">
+    <label>Motivo / nota</label><textarea id="m_mo_note">${esc(selectedNote)}</textarea>
   `, ()=>saveManualOverrideModal(id), current?'Guardar cambios':'Guardar asignación');
   setTimeout(refreshManualOverrideModal,0);
 }
@@ -678,15 +700,20 @@ function refreshManualOverrideModal(){
   const projectId=document.getElementById('m_mo_project').value;
   const project=db.projects.find(p=>p.id===projectId);
   const stageSelect=document.getElementById('m_mo_stage');
-  const employeeSelect=document.getElementById('m_mo_employee');
-  if(!project) return;
+  const employeesWrap=document.getElementById('m_mo_employees');
+  if(!project || !stageSelect || !employeesWrap) return;
   const stages=templatesForType(project.workTypeName);
   const currentStage=stageSelect.value;
   stageSelect.innerHTML=stages.map(t=>`<option value="${t.order}" ${String(t.order)===String(currentStage)?'selected':''}>${t.order}. ${t.stage} (${t.speciality})</option>`).join('');
   function refreshEmployees(){
-    const st=stages.find(t=>String(t.order)===String(stageSelect.value)) || stages[0];
-    const spec=st?st.speciality:'';
-    employeeSelect.innerHTML=db.employees.filter(e=>e.active && (!spec || e.specialities.includes(spec))).map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+    const selectedIds=(employeesWrap.dataset.selected||'').split(',').map(x=>x.trim()).filter(Boolean);
+    employeesWrap.innerHTML=renderManualOverrideEmployeeOptions(projectId, stageSelect.value, selectedIds);
+    const syncSelected=()=>{
+      const checked=[...employeesWrap.querySelectorAll('.m_mo_employee_check:checked')].map(el=>el.value);
+      employeesWrap.dataset.selected=checked.join(',');
+    };
+    employeesWrap.querySelectorAll('.m_mo_employee_check').forEach(el=>el.addEventListener('change', syncSelected));
+    syncSelected();
   }
   refreshEmployees();
   stageSelect.onchange=refreshEmployees;
@@ -694,14 +721,14 @@ function refreshManualOverrideModal(){
 function saveManualOverrideModal(id=''){
   const projectId=document.getElementById('m_mo_project').value;
   const stageOrder=Number(document.getElementById('m_mo_stage').value||0);
-  const employeeId=document.getElementById('m_mo_employee').value;
+  const employeeIds=[...document.querySelectorAll('.m_mo_employee_check:checked')].map(el=>el.value);
   const startDate=document.getElementById('m_mo_start').value;
   const endDate=document.getElementById('m_mo_end').value;
   const note=document.getElementById('m_mo_note').value.trim();
-  if(!projectId || !stageOrder || !employeeId || !startDate || !endDate){ alert('Rellena obra, etapa, empleado y fechas.'); return; }
+  if(!projectId || !stageOrder || !employeeIds.length || !startDate || !endDate){ alert('Rellena obra, etapa, empleados y fechas.'); return; }
   if(endDate < startDate){ alert('La fecha fin no puede ser anterior a la fecha inicio.'); return; }
   db.manualOverrides = db.manualOverrides || [];
-  const payload={id:id||uid('mo'), projectId, stageOrder, employeeId, startDate, endDate, note};
+  const payload={id:id||uid('mo'), projectId, stageOrder, employeeId:employeeIds[0], employeeIds, startDate, endDate, note};
   const duplicated=db.manualOverrides.some(x=>x.id!==payload.id && x.projectId===projectId && Number(x.stageOrder)===stageOrder);
   if(duplicated){ alert('Ya existe una asignación manual para esa etapa. Edita la existente o bórrala primero.'); return; }
   if(id){
@@ -740,7 +767,7 @@ function render(){
     <section class="panel ${active==='nolaborables'?'active':''}">${panelNoLaborables()}</section>
     <section class="panel ${active==='manual'?'active':''}">${panelManual(plan)}</section>
     <section class="panel ${active==='calendario'?'active':''}">${panelCalendario(plan)}</section>
-    ${isAdmin()?`<section class="panel ${active==='plan'?'active':''}">${panelPlan(plan)}</section>`:''}`;
+    <section class="panel ${active==='plan'?'active':''}">${panelPlan(plan)}</section>`;
 }
 
 function panelResumen(plan,m){
@@ -806,9 +833,9 @@ function panelNoLaborables(){
 function panelManual(plan){
   const overrides=(db.manualOverrides||[]).map(o=>{
     const project=db.projects.find(p=>p.id===o.projectId);
-    const emp=db.employees.find(e=>e.id===o.employeeId);
+    const employeeNames=getManualOverrideEmployeeIds(o).map(id=>db.employees.find(e=>e.id===id)?.name).filter(Boolean);
     const tpl=getStageTemplate(o.projectId,o.stageOrder);
-    return `<tr><td>${project?project.name:'-'}</td><td>${tpl?tpl.stage:o.stageOrder}</td><td>${emp?emp.name:'-'}</td><td>${fmtDate(o.startDate)}</td><td>${fmtDate(o.endDate)}</td><td>${o.note||''}</td><td><button class="secondary" onclick="openManualOverrideModal('${o.id}')">Editar</button> <button class="bad" onclick="deleteManualOverride('${o.id}')">Borrar</button></td></tr>`;
+    return `<tr><td>${project?project.name:'-'}</td><td>${tpl?tpl.stage:o.stageOrder}</td><td>${employeeNames.length?employeeNames.join(', '):'-'}</td><td>${fmtDate(o.startDate)}</td><td>${fmtDate(o.endDate)}</td><td>${o.note||''}</td><td><button class="secondary" onclick="openManualOverrideModal('${o.id}')">Editar</button> <button class="bad" onclick="deleteManualOverride('${o.id}')">Borrar</button></td></tr>`;
   }).join('');
   return `<div class="grid">
     <div class="card span-4">
@@ -973,9 +1000,9 @@ function panelCalendario(plan){
 }
 
 function panelPlan(plan){
-  const rows=plan.map(p=>`<tr><td>${p.projectName}</td><td>${p.stageOrder}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.durationDays}</td><td>${p.employeeName?'<span class="pill ok">'+p.employeeName+'</span>':'<span class="pill bad">Sin empleado</span>'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.status==='Sin recurso'?'<span class="pill bad">Sin recurso</span>':(p.isManual?'<span class="pill warn">Manual</span>':(p.status==='Planificada parcial'?'<span class="pill warn">Parcial</span>':'<span class="pill ok">Planificada</span>'))}</td><td><button class="secondary" onclick="openManualOverrideModal('', '${p.projectId}', '${p.stageOrder}')">Asignar manual</button></td></tr>`).join('');
+  const rows=plan.map(p=>`<tr><td>${p.projectName}</td><td>${p.stageOrder}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.durationDays}</td><td>${p.employeeName?'<span class="pill ok">'+p.employeeName+'</span>':'<span class="pill bad">Sin empleado</span>'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.status==='Sin recurso'?'<span class="pill bad">Sin recurso</span>':(p.isManual?'<span class="pill warn">Manual</span>':(p.status==='Planificada parcial'?'<span class="pill warn">Parcial</span>':'<span class="pill ok">Planificada</span>'))}</td><td><button class="secondary" onclick="openManualOverrideModal('${p.manualId||''}', '${p.projectId}', '${p.stageOrder}', '${esc(((p.employeeIds&&p.employeeIds.length)?p.employeeIds.join(','):(p.employeeId||'')))}', '${p.startDate||''}', '${p.endDate||''}', '${esc((p.manualNote||''))}')">Editar</button></td></tr>`).join('');
   const cargas={}; plan.forEach(p=>{const names=(p.employeeName||'').split(',').map(x=>x.trim()).filter(Boolean); names.forEach(name=>{cargas[name]=(cargas[name]||0)+p.durationDays;});});
-  return `<div class="grid"><div class="card span-12"><div class="split"><h2>Plan automático</h2><div class="muted">Regla actual: primera persona libre con especialidad válida, respetando orden de etapas, fecha de obra, prioridad, ausencias, domingos y días no laborables. Puedes forzar excepciones con asignación manual.</div></div>
+  return `<div class="grid"><div class="card span-12"><div class="split"><h2>Plan General</h2><div class="muted">Regla actual: primera persona libre con especialidad válida, respetando orden de etapas, fecha de obra, prioridad, ausencias, domingos y días no laborables. Puedes forzar excepciones con asignación manual.</div></div>
     <table><thead><tr><th>Obra</th><th>Orden</th><th>Etapa</th><th>Especialidad</th><th>Días</th><th>Empleado</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="card span-6"><h2>Carga por empleado</h2><table><thead><tr><th>Empleado</th><th>Días asignados</th></tr></thead><tbody>${Object.entries(cargas).sort((a,b)=>b[1]-a[1]).map(([n,d])=>`<tr><td>${n}</td><td>${d}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Sin asignaciones</td></tr>'}</tbody></table></div>
     <div class="card span-6"><h2>Límites actuales</h2><p class="muted">La asignación manual sirve para excepciones concretas. El plan automático ya excluye domingos y las fechas que bloquees en “Días no laborables”. Si fuerzas una etapa a unas fechas determinadas, esa etapa se respetará así en el plan y la siguiente arrancará después de la fecha final manual.</p></div>
