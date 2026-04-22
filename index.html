@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Planificación Obras Reforfast</title>
   <style>
-    :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
+   :root{--bg:#f6f8fb;--card:#fff;--line:#d9e1ea;--text:#1f2937;--muted:#6b7280;--brand:#bdd50c;--brand2:#d4ea2a;--warn:#b45309;--bad:#b91c1c;--good:#166534;--brand-dark:#9fb808;--chip:#f8fafc}
     *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
     header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:22px 24px;box-shadow:0 14px 40px rgba(15,118,110,.18)}
     .header-inner{max-width:1400px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
@@ -593,7 +593,7 @@ function computePlan(){
   const absByEmp={};
   db.absences.forEach(a=>{ if(!absByEmp[a.employeeId]) absByEmp[a.employeeId]=[]; absByEmp[a.employeeId].push(a); });
   const blockedSet=getNonWorkingDaySet();
-  const nextFree={}; employees.forEach(e=>nextFree[e.id]=nextWorkingDate(todayISO(), blockedSet));
+  const nextFree={}; employees.forEach(e=>nextFree[e.id]=nextWorkingDate('2000-01-01', blockedSet));
   const plan=[];
   const projects=clone(db.projects).filter(p=>p.status!=='Terminada').sort((a,b)=> (a.priority-b.priority) || a.startDate.localeCompare(b.startDate));
   for(const p of projects){
@@ -669,6 +669,45 @@ const tabs=[
 ];
 let active='resumen';
 let calendarState={month:todayISO().slice(0,7),view:'works'};
+let planGeneralState={view:'upcoming',pastMonth:'all',pastProject:'all',upcomingMonth:'all',upcomingProject:'all'};
+
+function setPlanFilter(key,value){
+  planGeneralState[key]=value||'all';
+  render();
+}
+
+function setPlanGeneralView(value){
+  planGeneralState.view=value||'upcoming';
+  render();
+}
+function monthKeyFromPlanItem(item){
+  return ((item.startDate||item.endDate||'').slice(0,7)) || '';
+}
+function monthLabelFromKey(key){
+  if(!key) return 'Sin fecha';
+  const [y,m]=key.split('-').map(Number);
+  return new Date(Date.UTC(y,(m||1)-1,1)).toLocaleDateString('es-ES',{month:'long',year:'numeric',timeZone:'UTC'});
+}
+function renderPlanRows(items){
+  return items.map(p=>`<tr><td>${p.projectName}</td><td>${p.stageOrder}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.durationDays}</td><td>${p.employeeName?'<span class="pill ok">'+p.employeeName+'</span>':'<span class="pill bad">Sin empleado</span>'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.status==='Sin recurso'?'<span class="pill bad">Sin recurso</span>':(p.isManual?'<span class="pill warn">Manual</span>':(p.status==='Planificada parcial'?'<span class="pill warn">Parcial</span>':'<span class="pill ok">Planificada</span>'))}</td><td><button class="secondary" onclick="openManualOverrideModal('${p.manualId||''}', '${p.projectId}', '${p.stageOrder}', '${esc(((p.employeeIds&&p.employeeIds.length)?p.employeeIds.join(','):(p.employeeId||'')))}', '${p.startDate||''}', '${p.endDate||''}', '${esc((p.manualNote||''))}')">Editar</button></td></tr>`).join('');
+}
+function renderPlanFilterBar(items, monthKey, projectKey, prefix){
+  const monthOptions=[...new Set(items.map(monthKeyFromPlanItem).filter(Boolean))].sort();
+  const projectOptions=[...new Set(items.map(p=>p.projectName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  return `<div class="split" style="margin:10px 0 12px">
+    <div class="muted small">${items.length} líneas</div>
+    <div class="actions">
+      <select onchange="setPlanFilter('${prefix}Month', this.value)" style="width:auto">
+        <option value="all">Todos los meses</option>
+        ${monthOptions.map(m=>`<option value="${m}" ${monthKey===m?'selected':''}>${monthLabelFromKey(m)}</option>`).join('')}
+      </select>
+      <select onchange="setPlanFilter('${prefix}Project', this.value)" style="width:auto">
+        <option value="all">Todas las obras</option>
+        ${projectOptions.map(p=>`<option value="${esc(p)}" ${projectKey===p?'selected':''}>${esc(p)}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+}
 
 function getManualOverrideEmployeeIds(item){
   if(!item) return [];
@@ -786,7 +825,12 @@ function render(){
 }
 
 function panelResumen(plan,m){
-  const nextStages=plan.slice(0,8).map(p=>`<tr><td>${p.projectName}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.employeeName||'-'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.isManual?'<span class="pill warn">Manual</span>':'<span class="pill ok">Auto</span>'}</td></tr>`).join('');
+  const today=todayISO();
+  const nextStages=plan
+    .filter(p=>p.startDate && p.startDate>=today)
+    .sort((a,b)=>a.startDate.localeCompare(b.startDate) || (a.projectName||'').localeCompare(b.projectName||'') || Number(a.stageOrder||0)-Number(b.stageOrder||0))
+    .slice(0,8)
+    .map(p=>`<tr><td>${p.projectName}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.employeeName||'-'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.isManual?'<span class="pill warn">Manual</span>':'<span class="pill ok">Auto</span>'}</td></tr>`).join('');
   return `
   <div class="grid">
     <div class="card span-3"><div class="muted">Obras activas</div><div class="kpi">${m.activeProjects}</div></div>
@@ -1015,10 +1059,37 @@ function panelCalendario(plan){
 }
 
 function panelPlan(plan){
-  const rows=plan.map(p=>`<tr><td>${p.projectName}</td><td>${p.stageOrder}</td><td>${p.stage}</td><td>${p.speciality}</td><td>${p.durationDays}</td><td>${p.employeeName?'<span class="pill ok">'+p.employeeName+'</span>':'<span class="pill bad">Sin empleado</span>'}</td><td>${p.startDate?fmtDate(p.startDate):'-'}</td><td>${p.endDate?fmtDate(p.endDate):'-'}</td><td>${p.status==='Sin recurso'?'<span class="pill bad">Sin recurso</span>':(p.isManual?'<span class="pill warn">Manual</span>':(p.status==='Planificada parcial'?'<span class="pill warn">Parcial</span>':'<span class="pill ok">Planificada</span>'))}</td><td><button class="secondary" onclick="openManualOverrideModal('${p.manualId||''}', '${p.projectId}', '${p.stageOrder}', '${esc(((p.employeeIds&&p.employeeIds.length)?p.employeeIds.join(','):(p.employeeId||'')))}', '${p.startDate||''}', '${p.endDate||''}', '${esc((p.manualNote||''))}')">Editar</button></td></tr>`).join('');
   const cargas={}; plan.forEach(p=>{const names=(p.employeeName||'').split(',').map(x=>x.trim()).filter(Boolean); names.forEach(name=>{cargas[name]=(cargas[name]||0)+p.durationDays;});});
-  return `<div class="grid"><div class="card span-12"><div class="split"><h2>Plan General</h2><div class="muted">Regla actual: primera persona libre con especialidad válida, respetando orden de etapas, fecha de obra, prioridad, ausencias, domingos y días no laborables. Puedes forzar excepciones con asignación manual.</div></div>
-    <table><thead><tr><th>Obra</th><th>Orden</th><th>Etapa</th><th>Especialidad</th><th>Días</th><th>Empleado</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${rows}</tbody></table></div>
+  const today=todayISO();
+  const anterioresBase=plan.filter(p=>p.endDate && p.endDate < today).sort((a,b)=>(b.endDate||'').localeCompare(a.endDate||'') || a.projectName.localeCompare(b.projectName,'es'));
+  const proximosBase=plan.filter(p=>!p.endDate || p.endDate >= today).sort((a,b)=>(a.startDate||'9999-12').localeCompare(b.startDate||'9999-12') || a.projectName.localeCompare(b.projectName,'es'));
+  const anteriores=anterioresBase.filter(p=>(planGeneralState.pastMonth==='all' || monthKeyFromPlanItem(p)===planGeneralState.pastMonth) && (planGeneralState.pastProject==='all' || p.projectName===planGeneralState.pastProject));
+  const proximos=proximosBase.filter(p=>(planGeneralState.upcomingMonth==='all' || monthKeyFromPlanItem(p)===planGeneralState.upcomingMonth) && (planGeneralState.upcomingProject==='all' || p.projectName===planGeneralState.upcomingProject));
+  const isPast=planGeneralState.view==='past';
+  const currentBase=isPast?anterioresBase:proximosBase;
+  const currentRows=isPast?anteriores:proximos;
+  const currentMonth=isPast?planGeneralState.pastMonth:planGeneralState.upcomingMonth;
+  const currentProject=isPast?planGeneralState.pastProject:planGeneralState.upcomingProject;
+  const currentPrefix=isPast?'past':'upcoming';
+  const currentTitle=isPast?'Anteriores':'Próximos';
+  const emptyText=isPast?'No hay líneas anteriores con ese filtro':'No hay líneas próximas con ese filtro';
+  return `<div class="grid">
+    <div class="card span-12">
+      <div class="split"><h2>Plan General</h2><div class="muted">Regla actual: primera persona libre con especialidad válida, respetando orden de etapas, fecha de obra, prioridad, ausencias, domingos y días no laborables. Puedes forzar excepciones con asignación manual.</div></div>
+    </div>
+    <div class="card span-12">
+      <div class="split" style="margin-bottom:10px;gap:12px">
+        <h2 style="margin:0">${currentTitle}</h2>
+        <div class="actions">
+          <select onchange="setPlanGeneralView(this.value)" style="width:auto">
+            <option value="upcoming" ${!isPast?'selected':''}>Próximos</option>
+            <option value="past" ${isPast?'selected':''}>Anteriores</option>
+          </select>
+        </div>
+      </div>
+      ${renderPlanFilterBar(currentBase, currentMonth, currentProject, currentPrefix)}
+      <table><thead><tr><th>Obra</th><th>Orden</th><th>Etapa</th><th>Especialidad</th><th>Días</th><th>Empleado</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${renderPlanRows(currentRows) || `<tr><td colspan="10" class="muted">${emptyText}</td></tr>`}</tbody></table>
+    </div>
     <div class="card span-6"><h2>Carga por empleado</h2><table><thead><tr><th>Empleado</th><th>Días asignados</th></tr></thead><tbody>${Object.entries(cargas).sort((a,b)=>b[1]-a[1]).map(([n,d])=>`<tr><td>${n}</td><td>${d}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Sin asignaciones</td></tr>'}</tbody></table></div>
     <div class="card span-6"><h2>Límites actuales</h2><p class="muted">La asignación manual sirve para excepciones concretas. El plan automático ya excluye domingos y las fechas que bloquees en “Días no laborables”. Si fuerzas una etapa a unas fechas determinadas, esa etapa se respetará así en el plan y la siguiente arrancará después de la fecha final manual.</p></div>
   </div>`;
